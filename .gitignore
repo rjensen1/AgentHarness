@@ -1,0 +1,6 @@
+bin/
+obj/
+*.user
+.vs/
+AgentHarness/wwwroot/xterm.js
+AgentHarness/wwwroot/xterm.css

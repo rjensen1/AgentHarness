@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <RootNamespace>AgentHarness</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WebView2 — only NuGet dependency per spec -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2478.35" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copy wwwroot files (terminal.html, xterm.js, xterm.css) to output -->
+    <Content Include="wwwroot\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

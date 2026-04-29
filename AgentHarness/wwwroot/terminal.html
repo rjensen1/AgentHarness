@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>AgentHarness Terminal</title>
+  <link rel="stylesheet" href="xterm.css"/>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #1e1e2e; overflow: hidden; }
+    #terminal { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="terminal"></div>
+  <script src="xterm.js"></script>
+  <script>
+    const term = new Terminal({
+      theme: {
+        background:  '#1e1e2e',
+        foreground:  '#cdd6f4',
+        cursor:      '#f5e0dc',
+        black:       '#45475a',
+        red:         '#f38ba8',
+        green:       '#a6e3a1',
+        yellow:      '#f9e2af',
+        blue:        '#89b4fa',
+        magenta:     '#cba6f7',
+        cyan:        '#89dceb',
+        white:       '#bac2de',
+        brightBlack: '#585b70',
+      },
+      fontFamily: '"Cascadia Code", "Consolas", monospace',
+      fontSize: 13,
+      cursorBlink: true,
+      scrollback: 5000,
+    });
+
+    term.open(document.getElementById('terminal'));
+    term.focus();
+
+    // xterm.js → C# (stdin): send raw data on each keypress
+    term.onData(function(data) {
+      window.chrome.webview.postMessage(data);
+    });
+
+    // C# → xterm.js (stdout): receive JSON { type: "output", data: "..." }
+    window.chrome.webview.addEventListener('message', function(event) {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'output') {
+          term.write(msg.data);
+        }
+      } catch (e) {
+        // ignore malformed messages
+      }
+    });
+  </script>
+</body>
+</html>

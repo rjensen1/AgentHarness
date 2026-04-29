@@ -1,0 +1,66 @@
+<Window x:Class="AgentHarness.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:AgentHarness"
+        Title="AgentHarness" Height="800" Width="1400"
+        Background="#11111b"
+        Loaded="OnLoaded">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 3-column terminal grid -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="3"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <local:TerminalPane x:Name="Pane0" Grid.Column="0"/>
+            <GridSplitter Grid.Column="1" Width="3" Background="#313244" HorizontalAlignment="Stretch"/>
+            <local:TerminalPane x:Name="Pane1" Grid.Column="2"/>
+            <GridSplitter Grid.Column="3" Width="3" Background="#313244" HorizontalAlignment="Stretch"/>
+            <local:TerminalPane x:Name="Pane2" Grid.Column="4"/>
+        </Grid>
+
+        <!-- Input panel -->
+        <Border Grid.Row="1" Background="#1e1e2e" Padding="8,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="To:" VerticalAlignment="Center"
+                           Foreground="#cdd6f4" Margin="0,0,6,0" FontFamily="Segoe UI" FontSize="13"/>
+
+                <ComboBox x:Name="AgentPicker" Grid.Column="2" Width="120" Margin="0,0,8,0"
+                          Background="#313244" Foreground="#cdd6f4"
+                          SelectedIndex="0">
+                    <ComboBoxItem Content="Agent 1"/>
+                    <ComboBoxItem Content="Agent 2"/>
+                    <ComboBoxItem Content="Agent 3"/>
+                </ComboBox>
+
+                <TextBox x:Name="InputBox" Grid.Column="1" Margin="0,0,8,0"
+                         Background="#313244" Foreground="#cdd6f4"
+                         CaretBrush="#cdd6f4" BorderThickness="0"
+                         FontFamily="Consolas" FontSize="13" Padding="4,2"
+                         KeyDown="OnInputKeyDown"
+                         VerticalContentAlignment="Center"/>
+
+                <Button x:Name="SendButton" Grid.Column="3" Content="Send"
+                        Width="70" Background="#89b4fa" Foreground="#11111b"
+                        FontWeight="SemiBold" BorderThickness="0"
+                        Click="OnSendClick"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
