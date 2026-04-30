@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -19,10 +20,11 @@ public sealed class ConPtySession : IDisposable
 
     public event Action<string>? OutputReceived;
 
-    public void Start(string command, short cols = 220, short rows = 50)
+    // extraEnv: key/value pairs merged on top of the inherited environment.
+    // Use to override TERM, COLORTERM, or inject any missing vars.
+    public void Start(string command, short cols = 220, short rows = 50,
+                      Dictionary<string, string>? extraEnv = null)
     {
-        // Create pipes: we write to hPipeInWrite, ConPTY reads from hPipeInRead
-        //               ConPTY writes to hPipeOutWrite, we read from hPipeOutRead
         if (!NativeMethods.CreatePipe(out var hPipeInRead,  out var hPipeInWrite,  IntPtr.Zero, 0))
             throw new InvalidOperationException($"CreatePipe (in) failed: {Marshal.GetLastWin32Error()}");
         if (!NativeMethods.CreatePipe(out var hPipeOutRead, out var hPipeOutWrite, IntPtr.Zero, 0))
@@ -35,11 +37,12 @@ public sealed class ConPtySession : IDisposable
         int hr = NativeMethods.CreatePseudoConsole(size, hPipeInRead, hPipeOutWrite, 0, out _hPC);
         if (hr != 0) throw new InvalidOperationException($"CreatePseudoConsole failed: 0x{hr:X8}");
 
-        // ConPTY now owns these ends — close our copies so we don't hold them open
         NativeMethods.CloseHandle(hPipeInRead);
         NativeMethods.CloseHandle(hPipeOutWrite);
 
-        // Build STARTUPINFOEX with PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE
+        // Build Unicode environment block merging parent env + terminal defaults + extras
+        var envBlock = BuildEnvBlock(extraEnv);
+
         IntPtr attrList    = IntPtr.Zero;
         IntPtr hPCValuePtr = IntPtr.Zero;
         try
@@ -61,9 +64,12 @@ public sealed class ConPtySession : IDisposable
             si.StartupInfo.cb = Marshal.SizeOf<STARTUPINFOEX>();
             si.lpAttributeList = attrList;
 
+            // CREATE_UNICODE_ENVIRONMENT tells CreateProcess the env block is UTF-16
+            uint flags = EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT;
+
             if (!NativeMethods.CreateProcess(null, command,
                     IntPtr.Zero, IntPtr.Zero, false,
-                    EXTENDED_STARTUPINFO_PRESENT, IntPtr.Zero, null,
+                    flags, envBlock, null,
                     ref si, out var pi))
                 throw new InvalidOperationException($"CreateProcess failed: {Marshal.GetLastWin32Error()}");
 
@@ -72,6 +78,7 @@ public sealed class ConPtySession : IDisposable
         }
         finally
         {
+            if (envBlock != IntPtr.Zero) Marshal.FreeHGlobal(envBlock);
             if (attrList != IntPtr.Zero)
             {
                 NativeMethods.DeleteProcThreadAttributeList(attrList);
@@ -81,7 +88,11 @@ public sealed class ConPtySession : IDisposable
                 Marshal.FreeHGlobal(hPCValuePtr);
         }
 
-        _readThread = new Thread(ReadLoop) { IsBackground = true, Name = $"ConPty-{command[..Math.Min(8, command.Length)]}" };
+        _readThread = new Thread(ReadLoop)
+        {
+            IsBackground = true,
+            Name = $"ConPty-{command[..Math.Min(8, command.Length)]}"
+        };
         _readThread.Start();
     }
 
@@ -103,6 +114,42 @@ public sealed class ConPtySession : IDisposable
         }
     }
 
+    // Builds a Windows Unicode environment block from the current process env,
+    // overriding with terminal capability vars and any caller-supplied extras.
+    // Format: KEY=VALUE\0KEY=VALUE\0\0 (UTF-16LE, double-null terminated)
+    private static IntPtr BuildEnvBlock(Dictionary<string, string>? extraEnv)
+    {
+        var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        // Inherit parent process environment
+        foreach (DictionaryEntry entry in Environment.GetEnvironmentVariables())
+            env[(string)entry.Key] = (string?)entry.Value ?? "";
+
+        // Advertise proper terminal capabilities so child processes render correctly
+        env["TERM"]      = "xterm-256color";
+        env["COLORTERM"] = "truecolor";
+
+        // Caller overrides (e.g. ANTHROPIC_API_KEY if not in user env)
+        if (extraEnv != null)
+            foreach (var kv in extraEnv)
+                env[kv.Key] = kv.Value;
+
+        var sb = new StringBuilder();
+        foreach (var kv in env)
+        {
+            sb.Append(kv.Key);
+            sb.Append('=');
+            sb.Append(kv.Value);
+            sb.Append('\0');
+        }
+        sb.Append('\0');  // double-null terminator
+
+        var bytes = Encoding.Unicode.GetBytes(sb.ToString());
+        var ptr   = Marshal.AllocHGlobal(bytes.Length);
+        Marshal.Copy(bytes, 0, ptr, bytes.Length);
+        return ptr;
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -116,6 +163,7 @@ public sealed class ConPtySession : IDisposable
 
     // --- Constants ---
     private const uint EXTENDED_STARTUPINFO_PRESENT       = 0x00080000;
+    private const uint CREATE_UNICODE_ENVIRONMENT         = 0x00000400;
     private const int  PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016;
 
     // --- Structs ---

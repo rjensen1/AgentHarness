@@ -10,12 +10,13 @@ public partial class MainWindow : Window
 {
     private InputRouter? _router;
 
-    // PROTOTYPE: Customize these to run Claude Code instead of cmd.exe once tested
+    // PROTOTYPE: Each pane runs a separate Claude Code REPL session via ConPTY.
+    // Full path used for reliability — claude.exe lives in .local/bin, not on PATH inside ConPTY.
     private static readonly (string Command, string AgentName, string InitText)[] AgentConfig =
     [
-        ("cmd.exe", "Agent 1", "echo Agent 1 ready"),
-        ("cmd.exe", "Agent 2", "echo Agent 2 ready"),
-        ("cmd.exe", "Agent 3", "echo Agent 3 ready"),
+        (@"C:\Users\russj\.local\bin\claude.exe", "Agent 1", ""),
+        (@"C:\Users\russj\.local\bin\claude.exe", "Agent 2", ""),
+        (@"C:\Users\russj\.local\bin\claude.exe", "Agent 3", ""),
     ];
 
     public MainWindow()

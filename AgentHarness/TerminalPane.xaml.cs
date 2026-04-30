@@ -45,9 +45,12 @@ public partial class TerminalPane : UserControl
         _session.OutputReceived += OnConPtyOutput;
         _session.Start(command);
 
-        // Allow shell to initialize before sending init text
-        await Task.Delay(500);
-        _session.Write(initText + "\r\n");
+        // Allow shell to initialize before sending init text (skip if empty)
+        if (!string.IsNullOrEmpty(initText))
+        {
+            await Task.Delay(500);
+            _session.Write(initText + "\r\n");
+        }
     }
 
     public void SendText(string text) => _session?.Write(text + "\r\n");
